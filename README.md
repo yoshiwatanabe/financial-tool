@@ -2,6 +2,9 @@
 
 A financial simulation tool designed for US-based Japanese expatriates. It projects asset growth, calculates pension income (Social Security & Japanese Nenkin), and visualizes the impact of life events on long-term financial health.
 
+![alt text](image-1.png)
+![alt text](image.png)
+
 ## Features
 
 *   **Asset Projection**: Simulate growth of 401k, IRA, Brokerage, etc.
@@ -99,3 +102,4 @@ The frontend will start at `http://localhost:5173`.
 ## License
 
 [MIT](LICENSE)
+
