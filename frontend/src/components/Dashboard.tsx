@@ -6,6 +6,7 @@ import { LifeEventForm } from "./LifeEventForm";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, BarChart, Bar } from 'recharts';
+import { InheritanceCalculator } from "./InheritanceCalculator";
 
 export function Dashboard() {
     const [assets, setAssets] = useState<Asset[]>([]);
@@ -19,6 +20,7 @@ export function Dashboard() {
         life_expectancy: 95,
     });
     const [simulationResult, setSimulationResult] = useState<SimulationResult[] | null>(null);
+    const exchangeRate = 150;
 
     const handleAddAsset = (asset: Asset) => {
         setAssets([...assets, asset]);
@@ -38,7 +40,7 @@ export function Dashboard() {
             assets,
             pensions,
             life_events: lifeEvents,
-            exchange_rate_usd_jpy: 150,
+            exchange_rate_usd_jpy: exchangeRate,
             inflation_rate_us: 0.02,
             inflation_rate_jp: 0.01,
         };
@@ -173,7 +175,7 @@ export function Dashboard() {
                             assets,
                             pensions,
                             life_events: lifeEvents,
-                            exchange_rate_usd_jpy: 150,
+                            exchange_rate_usd_jpy: exchangeRate,
                             inflation_rate_us: 0.02,
                             inflation_rate_jp: 0.01,
                         };
@@ -283,6 +285,15 @@ export function Dashboard() {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
+            )}
+
+            {simulationResult && pensions.length > 0 && (
+                <InheritanceCalculator
+                    simulationResult={simulationResult}
+                    profile={profile}
+                    pensions={pensions}
+                    exchangeRate={exchangeRate}
+                />
             )}
         </div>
     );
