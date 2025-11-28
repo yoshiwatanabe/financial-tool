@@ -272,25 +272,62 @@ def run_simulation(input_data: SimulationInput) -> List[dict]:
                 if event.year <= current_real_year:
                     current_recurring_monthly_impact += event.impact_monthly
             
-            results.append({"year": year, "age": current_age, "total_assets": round(total_val_usd, 2)})
+            # Create initial asset breakdown
+            initial_asset_breakdown = {}
+            for asset in input_data.assets:
+                val_usd = asset.current_value
+                if asset.currency == "JPY":
+                    val_usd /= input_data.exchange_rate_usd_jpy
+                initial_asset_breakdown[asset.name] = round(val_usd, 2)
+
+            results.append({
+                "year": year, 
+                "age": current_age, 
+                "total_assets": round(total_val_usd, 2),
+                "pension_incomes": {},
+                "asset_balances": initial_asset_breakdown,
+                "asset_drawdowns": {}
+            })
             continue
             
         # --- Future Years (year > current_real_year) ---
         
         # A. Grow Existing Assets
         year_total_assets_usd = 0.0
+        asset_breakdown = {}
+        asset_drawdowns = {}
+        
         for asset in input_data.assets:
             if asset.id in asset_states:
                 # Grow
                 asset_states[asset.id] *= (1 + asset.expected_return_rate)
-                # Contribute
-                asset_states[asset.id] += asset.contribution_monthly * 12
+                
+                # Contribute (only if before retirement)
+                # Strictly enforce retirement age for stopping contributions
+                if current_age < profile.retirement_age:
+                    asset_states[asset.id] += asset.contribution_monthly * 12
+                
+                # Withdraw (if applicable)
+                withdrawal_amount_usd = 0.0
+                if asset.withdrawal_start_age is not None and current_age >= asset.withdrawal_start_age:
+                    # Calculate withdrawal in native currency
+                    withdrawal_native = asset_states[asset.id] * asset.withdrawal_rate
+                    asset_states[asset.id] -= withdrawal_native
+                    
+                    # Convert withdrawal to USD for reporting
+                    withdrawal_amount_usd = withdrawal_native
+                    if asset.currency == "JPY":
+                        withdrawal_amount_usd /= input_data.exchange_rate_usd_jpy
+                    
+                    asset_drawdowns[asset.name] = round(withdrawal_amount_usd, 2)
                 
                 # Convert to USD
                 val_usd = asset_states[asset.id]
                 if asset.currency == "JPY":
                     val_usd /= input_data.exchange_rate_usd_jpy
+                
                 year_total_assets_usd += val_usd
+                asset_breakdown[asset.name] = round(val_usd, 2)
         
         # B. Calculate Pension Income for this year
         year_pension_income_usd = 0.0
@@ -321,11 +358,49 @@ def run_simulation(input_data: SimulationInput) -> List[dict]:
         for event in input_data.life_events:
             if event.year == year:
                 year_one_time_impact_usd += event.impact_one_time
-                current_recurring_monthly_impact += event.impact_monthly
+                
+                # Handle recurring impact start
+                monthly_impact = event.impact_monthly
+                if event.is_inflation_adjusted:
+                    # Apply inflation from NOW until event start
+                    years_from_now = max(0, year - current_real_year)
+                    # Use US inflation as default for life events (or could be mixed, but simple for now)
+                    monthly_impact *= (1 + input_data.inflation_rate_us) ** years_from_now
+                
+                current_recurring_monthly_impact += monthly_impact
+
+        # Apply inflation to ALREADY ACTIVE recurring impacts?
+        # The current logic sums up impacts. If we want dynamic inflation on the total recurring impact,
+        # we need to track each active recurring event separately.
+        # For MVP, let's assume the 'current_recurring_monthly_impact' is fixed once added, 
+        # UNLESS we refactor to track active events.
+        # Refactoring to track active events is better for "inflation adjusted living cost".
+        
+        # REFACTOR: Track active recurring events
+        # We need to rebuild current_recurring_monthly_impact each year from active events to apply inflation correctly.
+        # But `current_recurring_monthly_impact` variable was accumulating. 
+        # Let's change strategy: Iterate all events, check if they are active (year <= current_year), and sum them up.
+        
+        current_recurring_monthly_impact = 0.0
+        for event in input_data.life_events:
+            if event.year <= year:
+                # Event is active
+                monthly = event.impact_monthly
+                if monthly != 0:
+                    if event.is_inflation_adjusted:
+                        years_from_now = max(0, year - current_real_year)
+                        monthly *= (1 + input_data.inflation_rate_us) ** years_from_now
+                    current_recurring_monthly_impact += monthly
         
         # D. Net Flow (Income - Expenses)
         # Expenses are negative impacts in life events
-        net_annual_flow = year_pension_income_usd + year_one_time_impact_usd + (current_recurring_monthly_impact * 12)
+        # Note: Asset withdrawals are also "Income" in terms of cash flow available for spending,
+        # but they are already deducted from assets.
+        # If we want to track "Total Income Available", we should sum pension + withdrawals.
+        # But for "Net Flow" affecting Surplus, withdrawals are just a transfer from Asset to Cash (Surplus).
+        
+        total_withdrawals_usd = sum(asset_drawdowns.values())
+        net_annual_flow = year_pension_income_usd + year_one_time_impact_usd + (current_recurring_monthly_impact * 12) + total_withdrawals_usd
         
         # E. Apply Net Flow to Surplus
         # We assume surplus grows at inflation rate (purchasing power parity) or 0? 
@@ -339,7 +414,9 @@ def run_simulation(input_data: SimulationInput) -> List[dict]:
             "year": year,
             "age": current_age,
             "total_assets": round(total, 2),
-            "pension_incomes": pension_breakdown
+            "pension_incomes": pension_breakdown,
+            "asset_balances": asset_breakdown,
+            "asset_drawdowns": asset_drawdowns
         })
 
     return results

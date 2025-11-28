@@ -11,6 +11,7 @@ import {
     FormMessage,
 } from "./ui/form";
 import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
 import {
     Select,
     SelectContent,
@@ -24,19 +25,22 @@ import { v4 as uuidv4 } from 'uuid';
 const formSchema = z.object({
     name: z.string().min(2),
     type: z.enum(["Retirement", "Relocation", "EducationEnd", "Other"]),
-    year: z.coerce.number().min(2024).max(2100),
+    year: z.coerce.number().min(1900).max(2100),
     month: z.coerce.number().min(1).max(12),
     description: z.string().optional(),
     impact_one_time: z.coerce.number(),
     impact_monthly: z.coerce.number(),
+    is_inflation_adjusted: z.boolean().default(false),
 });
+
+type LifeEventFormValues = z.infer<typeof formSchema>;
 
 interface LifeEventFormProps {
     onSubmit: (event: LifeEvent) => void;
 }
 
 export function LifeEventForm({ onSubmit }: LifeEventFormProps) {
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<LifeEventFormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: "",
@@ -46,10 +50,11 @@ export function LifeEventForm({ onSubmit }: LifeEventFormProps) {
             description: "",
             impact_one_time: 0,
             impact_monthly: 0,
+            is_inflation_adjusted: false,
         },
     });
 
-    function handleSubmit(values: z.infer<typeof formSchema>) {
+    function handleSubmit(values: LifeEventFormValues) {
         const event: LifeEvent = {
             id: uuidv4(),
             ...values,
@@ -153,6 +158,28 @@ export function LifeEventForm({ onSubmit }: LifeEventFormProps) {
                         )}
                     />
                 </div>
+                <FormField
+                    control={form.control}
+                    name="is_inflation_adjusted"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                                <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                    Inflation Adjusted
+                                </FormLabel>
+                                <p className="text-sm text-muted-foreground">
+                                    If checked, the monthly impact will increase with US inflation rate.
+                                </p>
+                            </div>
+                        </FormItem>
+                    )}
+                />
                 <Button type="submit">Add Life Event</Button>
             </form>
         </Form>

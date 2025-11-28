@@ -15,7 +15,6 @@ export function Dashboard() {
     const [profile, setProfile] = useState<UserProfile>({
         birth_year: 1975,
         spouse_birth_year: 1975,
-        current_location: "US",
         retirement_age: 65,
         life_expectancy: 95,
     });
@@ -112,7 +111,15 @@ export function Dashboard() {
                         <div className="mt-4 space-y-2">
                             {assets.map((a, index) => (
                                 <div key={index} className="flex justify-between items-center text-sm p-2 bg-secondary/20 rounded">
-                                    <span>{a.name}: {a.currency} {a.current_value}</span>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-medium">{a.name} ({a.type})</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {a.currency} {a.current_value.toLocaleString()} |
+                                            Contrib: {a.contribution_monthly.toLocaleString()}/mo (stops at age {profile.retirement_age}) |
+                                            Return: {(a.expected_return_rate * 100).toFixed(1)}%
+                                            {a.withdrawal_start_age && ` | Withdraw: ${(a.withdrawal_rate! * 100).toFixed(1)}% @ Age ${a.withdrawal_start_age}`}
+                                        </span>
+                                    </div>
                                     <Button variant="ghost" size="sm" onClick={() => {
                                         const newAssets = [...assets];
                                         newAssets.splice(index, 1);
@@ -133,7 +140,14 @@ export function Dashboard() {
                         <div className="mt-4 space-y-2">
                             {pensions.map((p, index) => (
                                 <div key={index} className="flex justify-between items-center text-sm p-2 bg-secondary/20 rounded">
-                                    <span>{p.name}: {p.currency} {p.monthly_amount_estimated}/mo</span>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-medium">{p.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {p.currency} {p.monthly_amount_estimated.toLocaleString()}/mo |
+                                            Start Age: {p.start_age} |
+                                            Inflation Adjusted: {p.is_inflation_adjusted ? "Yes" : "No"}
+                                        </span>
+                                    </div>
                                     <Button variant="ghost" size="sm" onClick={() => {
                                         const newPensions = [...pensions];
                                         newPensions.splice(index, 1);
@@ -154,7 +168,13 @@ export function Dashboard() {
                         <div className="mt-4 space-y-2">
                             {lifeEvents.map((e, index) => (
                                 <div key={index} className="flex justify-between items-center text-sm p-2 bg-secondary/20 rounded">
-                                    <span>{e.name} ({e.year}) - Impact: ${e.impact_monthly}/mo</span>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-medium">{e.name} ({e.year})</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            Impact: ${e.impact_monthly}/mo |
+                                            Inflation Adjusted: {e.is_inflation_adjusted ? "Yes" : "No"}
+                                        </span>
+                                    </div>
                                     <Button variant="ghost" size="sm" onClick={() => {
                                         const newEvents = [...lifeEvents];
                                         newEvents.splice(index, 1);
@@ -221,80 +241,95 @@ export function Dashboard() {
                 <Button size="lg" onClick={runSimulation}>Run Simulation</Button>
             </div>
 
-            {simulationResult && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Simulation Results</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={simulationResult}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="year" />
-                                <YAxis
-                                    tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
-                                />
-                                <Tooltip
-                                    labelFormatter={(year) => {
-                                        const age = year - profile.birth_year;
-                                        return `${year} (Age: ${age})`;
-                                    }}
-                                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Total Assets"]}
-                                />
-                                <Legend />
-                                <Line type="monotone" dataKey="total_assets" stroke="#8884d8" name="Total Assets" />
-                                <ReferenceLine x={new Date().getFullYear()} stroke="green" label="Now" />
-                                {lifeEvents.map((event, index) => (
-                                    <ReferenceLine key={index} x={event.year} stroke="red" label={event.name} />
-                                ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            )}
-
-            {simulationResult && pensions.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Annual Pension Income (Projected)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={simulationResult}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="year" />
-                                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                                <Tooltip
-                                    labelFormatter={(year) => {
-                                        const age = year - profile.birth_year;
-                                        return `${year} (Age: ${age})`;
-                                    }}
-                                    formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
-                                />
-                                <Legend />
-                                {pensions.map((p, index) => (
-                                    <Bar
-                                        key={p.id}
-                                        dataKey={`pension_incomes.${p.name}`}
-                                        name={p.name}
-                                        stackId="a"
-                                        fill={`hsl(${index * 60}, 70%, 50%)`}
+            {
+                simulationResult && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Simulation Results</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[400px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={simulationResult}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="year" />
+                                    <YAxis
+                                        tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
                                     />
-                                ))}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            )}
+                                    <Tooltip
+                                        labelFormatter={(year) => {
+                                            const age = year - profile.birth_year;
+                                            return `${year} (Age: ${age})`;
+                                        }}
+                                        formatter={(value: number) => [`$${value.toLocaleString()}`, "Total Assets"]}
+                                    />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="total_assets" stroke="#8884d8" name="Total Assets" />
+                                    <ReferenceLine x={new Date().getFullYear()} stroke="green" label="Now" />
+                                    {lifeEvents.map((event, index) => (
+                                        <ReferenceLine key={index} x={event.year} stroke="red" label={event.name} />
+                                    ))}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                )
+            }
 
-            {simulationResult && pensions.length > 0 && (
-                <InheritanceCalculator
-                    simulationResult={simulationResult}
-                    profile={profile}
-                    pensions={pensions}
-                    exchangeRate={exchangeRate}
-                />
-            )}
-        </div>
+            {
+                simulationResult && (pensions.length > 0 || assets.some(a => a.withdrawal_start_age)) && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Annual Pension Income (Projected)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[400px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={simulationResult}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="year" />
+                                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                                    <Tooltip
+                                        labelFormatter={(year) => {
+                                            const age = year - profile.birth_year;
+                                            return `${year} (Age: ${age})`;
+                                        }}
+                                        formatter={(value: number) => [`$${value.toLocaleString()}`, ""]}
+                                    />
+                                    <Legend />
+                                    {pensions.map((p, index) => (
+                                        <Bar
+                                            key={p.id}
+                                            dataKey={`pension_incomes.${p.name}`}
+                                            name={p.name}
+                                            stackId="a"
+                                            fill={`hsl(${index * 60}, 70%, 50%)`}
+                                        />
+                                    ))}
+                                    {assets.filter(a => a.withdrawal_start_age).map((a, index) => (
+                                        <Bar
+                                            key={a.id}
+                                            dataKey={`asset_drawdowns.${a.name}`}
+                                            name={`${a.name} (Drawdown)`}
+                                            stackId="a"
+                                            fill={`hsl(${index * 60 + 180}, 70%, 50%)`}
+                                        />
+                                    ))}
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                )
+            }
+
+            {
+                simulationResult && pensions.length > 0 && (
+                    <InheritanceCalculator
+                        simulationResult={simulationResult}
+                        profile={profile}
+                        pensions={pensions}
+                        exchangeRate={exchangeRate}
+                    />
+                )
+            }
+        </div >
     );
 }

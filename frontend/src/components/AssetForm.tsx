@@ -30,6 +30,8 @@ const formSchema = z.object({
     currency: z.enum(["USD", "JPY"]),
     contribution_monthly: z.coerce.number().min(0),
     expected_return_rate: z.coerce.number().min(0).max(1),
+    withdrawal_start_age: z.number().optional(),
+    withdrawal_rate: z.number().min(0).max(1).optional(),
 });
 
 interface AssetFormProps {
@@ -46,6 +48,7 @@ export function AssetForm({ onSubmit }: AssetFormProps) {
             currency: "USD",
             contribution_monthly: 0,
             expected_return_rate: 0.05,
+            withdrawal_rate: 0,
         },
     });
 
@@ -126,6 +129,7 @@ export function AssetForm({ onSubmit }: AssetFormProps) {
                         )}
                     />
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
@@ -154,8 +158,46 @@ export function AssetForm({ onSubmit }: AssetFormProps) {
                         )}
                     />
                 </div>
+
+                <div className="space-y-4 border-t pt-4 mt-4">
+                    <h4 className="font-medium text-sm">Withdrawal Strategy (Optional)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="withdrawal_start_age"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Start Age</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g. 65" {...field}
+                                            value={field.value || ''}
+                                            onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="withdrawal_rate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Annual Rate (%)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.1" placeholder="e.g. 4.0" {...field}
+                                            value={field.value ? (field.value * 100).toString() : ''}
+                                            onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) / 100 : 0)}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
                 <Button type="submit">Add Asset</Button>
             </form>
-        </Form>
+        </Form >
     );
 }

@@ -1,49 +1,40 @@
-export type AssetType = "401k" | "IRA" | "RothIRA" | "Brokerage" | "Crypto" | "RealEstate" | "Cash" | "Other";
-export type Currency = "USD" | "JPY";
-
-export interface Asset {
-    id: string;
-    name: string;
-    type: AssetType;
-    current_value: number;
-    currency: Currency;
-    contribution_monthly: number;
-    contribution_currency: Currency;
-    expected_return_rate: number;
-    is_taxable: boolean;
-}
-
-export type PensionType = "SocialSecurity" | "JPPension" | "PrivateAnnuity" | "Other";
-
-export interface Pension {
-    id: string;
-    name: string;
-    type: PensionType;
-    start_age: number;
-    monthly_amount_estimated: number;
-    currency: Currency;
-    is_inflation_adjusted: boolean;
-}
-
-export type LifeEventType = "Retirement" | "Relocation" | "EducationEnd" | "Other";
-
 export interface LifeEvent {
-    id: string;
+    id?: string;
     name: string;
-    type: LifeEventType;
     year: number;
     month: number;
     description?: string;
     impact_one_time: number;
     impact_monthly: number;
+    is_inflation_adjusted?: boolean;
 }
 
 export interface UserProfile {
     birth_year: number;
-    spouse_birth_year?: number;
-    current_location: "US" | "JP";
-    retirement_age: number;
     life_expectancy: number;
+    retirement_age: number;
+    spouse_birth_year?: number;
+}
+
+export interface Asset {
+    id?: string;
+    name: string;
+    type: string;
+    currency: string;
+    current_value: number;
+    contribution_monthly: number;
+    expected_return_rate: number;
+    withdrawal_start_age?: number;
+    withdrawal_rate?: number;
+}
+
+export interface Pension {
+    id?: string;
+    name: string;
+    currency: string;
+    monthly_amount_estimated: number;
+    start_age: number;
+    is_inflation_adjusted: boolean;
 }
 
 export interface SimulationInput {
@@ -61,4 +52,6 @@ export interface SimulationResult {
     age: number;
     total_assets: number;
     pension_incomes: Record<string, number>;
+    asset_balances?: Record<string, number>;
+    asset_drawdowns?: Record<string, number>;
 }

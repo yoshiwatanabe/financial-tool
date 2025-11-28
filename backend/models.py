@@ -12,6 +12,8 @@ class Asset(BaseModel):
     contribution_currency: Literal["USD", "JPY"] = "USD"
     expected_return_rate: float = 0.05  # Annual return rate (0.05 = 5%)
     is_taxable: bool = True
+    withdrawal_start_age: Optional[int] = None
+    withdrawal_rate: float = 0.0  # Annual withdrawal rate (0.04 = 4%)
 
 class Pension(BaseModel):
     id: str
@@ -30,7 +32,8 @@ class LifeEvent(BaseModel):
     month: int = 1
     description: Optional[str] = None
     impact_one_time: float = 0.0  # Positive for income, negative for cost
-    impact_monthly: float = 0.0   # Change in monthly cashflow
+    impact_monthly: float = 0.0
+    is_inflation_adjusted: bool = False   # Change in monthly cashflow
 
 class UserProfile(BaseModel):
     birth_year: int
